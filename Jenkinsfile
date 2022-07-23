@@ -1,20 +1,32 @@
-pipeline{
-    
-    agent any
+node {
+  stage("Main") {
 
-    stages {
+    checkout scm
 
-        stage("Verify") {
+    docker.image('bitnami/php-fpm:latest').inside("-e COMPOSER_HOME=/tmp/jenkins-workspace") {
 
-            steps {
-                sh '''
-                    docker version
-                    docker info
-                    docker compose version
-                    curl --version
-                '''
-            }
+      stage("Prepare folders") {
+        sh "mkdir /tmp/jenkins-workspace"
+      }
 
-        }
-    }
+      stage("Get Composer") {
+        sh "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\""
+        sh "php composer-setup.php"
+      }
+
+      stage("Install dependencies") {
+        sh "php composer.phar install"
+      }
+
+      stage("Run tests") {
+        sh "vendor/bin/phpunit"
+      }
+
+   }
+
+  }
+
+  // Clean up workspace
+  step([$class: 'WsCleanup'])
+
 }
